@@ -88,12 +88,129 @@ button {
 }
 
 input,
-select {
+select,
+textarea {
   padding: 0.7rem 0.85rem;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
   color: var(--ink);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 4.5rem;
+  font: inherit;
+  line-height: 1.45;
+}
+
+.composer {
+  margin-bottom: 1.25rem;
+  padding: 1.15rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+
+  h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 650;
+  }
+}
+
+.composer__hint {
+  margin: 0.3rem 0 0.9rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.composer__grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.field--full {
+  grid-column: 1 / -1;
+}
+
+.composer__actions {
+  margin-top: 0.9rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.role-banner {
+  margin-bottom: 1.15rem;
+  padding: 0.8rem 1rem;
+  border-radius: 10px;
+  border: 1px solid #d5e3f0;
+  background: #f4f8fb;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.flash {
+  margin-bottom: 0.9rem;
+  padding: 0.7rem 0.95rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+
+.flash--ok {
+  border: 1px solid #c6e8d6;
+  background: #eefaf3;
+  color: #176447;
+}
+
+.flash--error {
+  border: 1px solid #f0c7c7;
+  background: #fff7f7;
+  color: #8a2e2e;
+}
+
+.btn {
+  padding: 0.55rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+
+.btn--primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn--action {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.78rem;
+  background: #fff;
+  border-color: var(--line);
+  color: var(--ink);
+
+  &:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  max-width: 14rem;
+}
+
+.actions__none {
+  font-size: 0.8rem;
+  color: var(--muted);
 }
 
 .meta {

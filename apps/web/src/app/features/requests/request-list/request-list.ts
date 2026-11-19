@@ -1,14 +1,26 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { debounceTime, distinctUntilChanged, Subject, switchMap, catchError, of, startWith, tap } from 'rxjs';
+import {
+  debounceTime,
+  distinctUntilChanged,
+  Subject,
+  switchMap,
+  catchError,
+  of,
+  startWith,
+  tap,
+} from 'rxjs';
 import { RequestsApiService } from '../../../core/services/requests-api.service';
 import { IdentityService } from '../../../core/services/identity.service';
 import {
+  ACTION_LABELS,
   PaginatedRequests,
   RequestStatus,
   STATUS_LABELS,
   ServiceRequest,
+  TransitionAction,
+  availableActions,
 } from '../../../core/models/request.model';
 
 @Component({
@@ -23,6 +35,7 @@ export class RequestListComponent implements OnInit {
   readonly identity = inject(IdentityService);
 
   readonly statusLabels = STATUS_LABELS;
+  readonly actionLabels = ACTION_LABELS;
   readonly statuses: Array<RequestStatus | ''> = [
     '',
     'REGISTRADA',
@@ -36,8 +49,14 @@ export class RequestListComponent implements OnInit {
   page = 1;
   readonly pageSize = 20;
 
+  newTitle = '';
+  newDescription = '';
+
   readonly loading = signal(false);
+  readonly acting = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly successMessage = signal<string | null>(null);
+  readonly actionError = signal<string | null>(null);
   readonly result = signal<PaginatedRequests | null>(null);
 
   readonly requests = computed(() => this.result()?.data ?? []);
@@ -46,6 +65,8 @@ export class RequestListComponent implements OnInit {
   readonly isEmpty = computed(
     () => !this.loading() && !this.errorMessage() && this.requests().length === 0,
   );
+  readonly isFilial = computed(() => this.identity.session().userRole === 'filial');
+  readonly isAnalista = computed(() => this.identity.session().userRole === 'analista');
 
   private readonly reload$ = new Subject<void>();
   private readonly search$ = new Subject<string>();
@@ -106,6 +127,7 @@ export class RequestListComponent implements OnInit {
     if (preset) {
       this.identity.select(preset);
       this.page = 1;
+      this.clearFeedback();
       this.reload$.next();
     }
   }
@@ -121,11 +143,73 @@ export class RequestListComponent implements OnInit {
   }
 
   goToPage(next: number): void {
-    if (next < 1 || next > this.totalPages()) {
+    if (next < 1 || (this.totalPages() > 0 && next > this.totalPages())) {
       return;
     }
     this.page = next;
     this.reload$.next();
+  }
+
+  retry(): void {
+    this.reload$.next();
+  }
+
+  actionsFor(item: ServiceRequest): TransitionAction[] {
+    return availableActions(item.status, this.identity.session().userRole);
+  }
+
+  createRequest(): void {
+    const title = this.newTitle.trim();
+    const description = this.newDescription.trim();
+    if (!title || !description) {
+      this.actionError.set('Título y descripción son obligatorios.');
+      return;
+    }
+    if (!this.isFilial()) {
+      this.actionError.set('Solo una filial puede registrar solicitudes.');
+      return;
+    }
+
+    this.acting.set(true);
+    this.clearFeedback();
+    this.api.create({ title, description }).subscribe({
+      next: (created) => {
+        this.acting.set(false);
+        this.newTitle = '';
+        this.newDescription = '';
+        this.successMessage.set(
+          `Solicitud registrada (${created.id.slice(0, 8)}…) en estado Registrada.`,
+        );
+        this.page = 1;
+        this.reload$.next();
+      },
+      error: (err) => {
+        this.acting.set(false);
+        this.actionError.set(
+          err?.error?.message ?? 'No fue posible registrar la solicitud.',
+        );
+      },
+    });
+  }
+
+  runTransition(item: ServiceRequest, action: TransitionAction): void {
+    this.acting.set(true);
+    this.clearFeedback();
+    this.api.transition(item.id, action).subscribe({
+      next: (updated) => {
+        this.acting.set(false);
+        this.successMessage.set(
+          `Solicitud actualizada a «${STATUS_LABELS[updated.status]}» (${ACTION_LABELS[action]}).`,
+        );
+        this.reload$.next();
+      },
+      error: (err) => {
+        this.acting.set(false);
+        this.actionError.set(
+          err?.error?.message ?? 'No fue posible ejecutar la transición.',
+        );
+      },
+    });
   }
 
   trackById(_: number, item: ServiceRequest): string {
@@ -141,5 +225,10 @@ export class RequestListComponent implements OnInit {
       dateStyle: 'medium',
       timeStyle: 'short',
     }).format(new Date(value));
+  }
+
+  private clearFeedback(): void {
+    this.successMessage.set(null);
+    this.actionError.set(null);
   }
 }

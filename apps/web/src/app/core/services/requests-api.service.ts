@@ -6,6 +6,7 @@ import {
   PaginatedRequests,
   RequestStatus,
   ServiceRequest,
+  TransitionAction,
 } from '../models/request.model';
 import { IdentityService } from './identity.service';
 
@@ -14,6 +15,11 @@ export interface ListRequestsParams {
   q?: string;
   page?: number;
   pageSize?: number;
+}
+
+export interface CreateRequestPayload {
+  title: string;
+  description: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -44,6 +50,20 @@ export class RequestsApiService {
     return this.http.get<ServiceRequest>(`${this.baseUrl}/${id}`, {
       headers: this.buildHeaders(),
     });
+  }
+
+  create(payload: CreateRequestPayload): Observable<ServiceRequest> {
+    return this.http.post<ServiceRequest>(this.baseUrl, payload, {
+      headers: this.buildHeaders(),
+    });
+  }
+
+  transition(id: string, action: TransitionAction): Observable<ServiceRequest> {
+    return this.http.post<ServiceRequest>(
+      `${this.baseUrl}/${id}/transitions`,
+      { action },
+      { headers: this.buildHeaders() },
+    );
   }
 
   private buildHeaders(): HttpHeaders {

@@ -4,7 +4,8 @@
       <p class="eyebrow">Centro de servicios compartidos</p>
       <h1>Mesa de solicitudes</h1>
       <p class="lede">
-        Consulte el estado de las solicitudes de su filial sin contactar al equipo de atención.
+        Registre, atienda y cierre solicitudes respetando el proceso acordado. Cada sesión
+        actúa como filial o analista.
       </p>
     </div>
 
@@ -15,7 +16,7 @@
         (change)="onSessionChange($any($event.target).value)"
         [attr.aria-label]="'Seleccionar sesión'"
       >
-        @for (preset of identity.presets; track preset.userId + preset.tenantId; let i = $index) {
+        @for (preset of identity.presets; track preset.userId + preset.tenantId + preset.userRole; let i = $index) {
           <option [value]="i" [selected]="selectedPresetIndex() === i">{{ preset.displayName }}</option>
         }
       </select>
@@ -25,6 +26,43 @@
       </small>
     </label>
   </header>
+
+  @if (isFilial()) {
+    <section class="composer" aria-label="Registrar solicitud">
+      <h2>Nueva solicitud</h2>
+      <p class="composer__hint">La solicitud nace en estado <strong>Registrada</strong>.</p>
+      <div class="composer__grid">
+        <label class="field">
+          <span>Título</span>
+          <input type="text" [(ngModel)]="newTitle" maxlength="500" placeholder="Ej. Ajuste de nómina" />
+        </label>
+        <label class="field field--full">
+          <span>Descripción</span>
+          <textarea
+            [(ngModel)]="newDescription"
+            rows="3"
+            placeholder="Detalle del requerimiento"
+          ></textarea>
+        </label>
+      </div>
+      <div class="composer__actions">
+        <button type="button" class="btn btn--primary" [disabled]="acting()" (click)="createRequest()">
+          Registrar solicitud
+        </button>
+      </div>
+    </section>
+  } @else {
+    <div class="role-banner">
+      Sesión de <strong>analista</strong>: puede atender y resolver. El cierre lo confirma la filial.
+    </div>
+  }
+
+  @if (successMessage(); as ok) {
+    <div class="flash flash--ok" role="status">{{ ok }}</div>
+  }
+  @if (actionError(); as err) {
+    <div class="flash flash--error" role="alert">{{ err }}</div>
+  }
 
   <div class="toolbar">
     <label class="field">
@@ -58,7 +96,7 @@
     <div class="state state--error" role="alert">
       <strong>No se pudo completar la consulta</strong>
       <p>{{ error }}</p>
-      <button type="button" (click)="goToPage(page)">Reintentar</button>
+      <button type="button" (click)="retry()">Reintentar</button>
     </div>
   }
 
@@ -89,7 +127,7 @@
             <th>Título</th>
             <th>Estado</th>
             <th>Creada</th>
-            <th>Actualizada</th>
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -104,7 +142,28 @@
                 <span [class]="statusClass(item.status)">{{ statusLabels[item.status] }}</span>
               </td>
               <td>{{ formatDate(item.createdAt) }}</td>
-              <td>{{ formatDate(item.updatedAt) }}</td>
+              <td>
+                <div class="actions">
+                  @for (action of actionsFor(item); track action) {
+                    <button
+                      type="button"
+                      class="btn btn--action"
+                      [disabled]="acting()"
+                      (click)="runTransition(item, action)"
+                    >
+                      {{ actionLabels[action] }}
+                    </button>
+                  } @empty {
+                    <span class="actions__none">
+                      @if (item.status === 'CERRADA') {
+                        Cerrada
+                      } @else {
+                        Sin acción para este rol
+                      }
+                    </span>
+                  }
+                </div>
+              </td>
             </tr>
           }
         </tbody>
@@ -112,10 +171,12 @@
     </div>
 
     <nav class="pager" aria-label="Paginación">
-      <button type="button" [disabled]="page <= 1" (click)="goToPage(page - 1)">Anterior</button>
+      <button type="button" [disabled]="page <= 1 || acting()" (click)="goToPage(page - 1)">
+        Anterior
+      </button>
       <button
         type="button"
-        [disabled]="page >= totalPages()"
+        [disabled]="page >= totalPages() || acting()"
         (click)="goToPage(page + 1)"
       >
         Siguiente
