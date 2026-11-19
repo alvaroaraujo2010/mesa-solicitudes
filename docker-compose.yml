@@ -1,0 +1,73 @@
+# Perfiles:
+#   mysql     -> MySQL + API + Web
+#   memory    -> API (memoria) + Web
+#   dynamodb  -> DynamoDB Local + API + Web
+#
+# Ejemplo: docker compose --profile mysql up --build
+
+services:
+  mysql:
+    image: mysql:8.0
+    profiles: [mysql]
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root_secret
+      MYSQL_DATABASE: mesa_solicitudes
+      MYSQL_USER: mesa
+      MYSQL_PASSWORD: mesa_secret
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./apps/api/scripts/init-mysql.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot_secret"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  dynamodb:
+    image: amazon/dynamodb-local:2.5.2
+    profiles: [dynamodb]
+    ports:
+      - "8000:8000"
+    command: "-jar DynamoDBLocal.jar -sharedDb -inMemory"
+
+  api:
+    build:
+      context: ./apps/api
+    profiles: [mysql, memory, dynamodb]
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      PERSISTENCE_ADAPTER: ${PERSISTENCE_ADAPTER:-memory}
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: mesa
+      MYSQL_PASSWORD: mesa_secret
+      MYSQL_DATABASE: mesa_solicitudes
+      DYNAMODB_TABLE_NAME: mesa-solicitudes
+      DYNAMODB_REGION: us-east-1
+      DYNAMODB_ENDPOINT: http://dynamodb:8000
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+    depends_on:
+      mysql:
+        condition: service_healthy
+        required: false
+      dynamodb:
+        condition: service_started
+        required: false
+
+  web:
+    build:
+      context: ./apps/web
+    profiles: [mysql, memory, dynamodb]
+    ports:
+      - "4200:80"
+    depends_on:
+      - api
+
+volumes:
+  mysql_data:
