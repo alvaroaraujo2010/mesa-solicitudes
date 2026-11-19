@@ -1,0 +1,125 @@
+<section class="page">
+  <header class="page__header">
+    <div>
+      <p class="eyebrow">Centro de servicios compartidos</p>
+      <h1>Mesa de solicitudes</h1>
+      <p class="lede">
+        Consulte el estado de las solicitudes de su filial sin contactar al equipo de atención.
+      </p>
+    </div>
+
+    <label class="session">
+      <span>Sesión activa</span>
+      <select
+        [value]="selectedPresetIndex()"
+        (change)="onSessionChange($any($event.target).value)"
+        [attr.aria-label]="'Seleccionar sesión'"
+      >
+        @for (preset of identity.presets; track preset.userId + preset.tenantId; let i = $index) {
+          <option [value]="i" [selected]="selectedPresetIndex() === i">{{ preset.displayName }}</option>
+        }
+      </select>
+      <small>
+        Tenant: <strong>{{ identity.session().tenantId }}</strong> ·
+        Rol: <strong>{{ identity.session().userRole }}</strong>
+      </small>
+    </label>
+  </header>
+
+  <div class="toolbar">
+    <label class="field">
+      <span>Buscar</span>
+      <input
+        type="search"
+        placeholder="ID o título"
+        [ngModel]="searchTerm"
+        (ngModelChange)="onSearchChange($event)"
+      />
+    </label>
+
+    <label class="field">
+      <span>Estado</span>
+      <select [(ngModel)]="statusFilter" (ngModelChange)="onStatusChange()">
+        <option value="">Todos</option>
+        @for (status of statuses; track status) {
+          @if (status) {
+            <option [value]="status">{{ statusLabels[status] }}</option>
+          }
+        }
+      </select>
+    </label>
+  </div>
+
+  @if (loading()) {
+    <div class="state state--loading" role="status">Cargando solicitudes…</div>
+  }
+
+  @if (errorMessage(); as error) {
+    <div class="state state--error" role="alert">
+      <strong>No se pudo completar la consulta</strong>
+      <p>{{ error }}</p>
+      <button type="button" (click)="goToPage(page)">Reintentar</button>
+    </div>
+  }
+
+  @if (isEmpty()) {
+    <div class="state state--empty">
+      <strong>Sin solicitudes</strong>
+      <p>
+        Esta filial no tiene solicitudes
+        @if (statusFilter || searchTerm) {
+          con los filtros actuales
+        }
+        .
+      </p>
+    </div>
+  }
+
+  @if (!loading() && !errorMessage() && requests().length > 0) {
+    <div class="meta">
+      <span>{{ total() | number }} solicitudes</span>
+      <span>Página {{ page }} de {{ totalPages() }}</span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Título</th>
+            <th>Estado</th>
+            <th>Creada</th>
+            <th>Actualizada</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of requests(); track trackById($index, item)) {
+            <tr>
+              <td class="mono">{{ item.id }}</td>
+              <td>
+                <div class="title">{{ item.title }}</div>
+                <div class="desc">{{ item.description }}</div>
+              </td>
+              <td>
+                <span [class]="statusClass(item.status)">{{ statusLabels[item.status] }}</span>
+              </td>
+              <td>{{ formatDate(item.createdAt) }}</td>
+              <td>{{ formatDate(item.updatedAt) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <nav class="pager" aria-label="Paginación">
+      <button type="button" [disabled]="page <= 1" (click)="goToPage(page - 1)">Anterior</button>
+      <button
+        type="button"
+        [disabled]="page >= totalPages()"
+        (click)="goToPage(page + 1)"
+      >
+        Siguiente
+      </button>
+    </nav>
+  }
+</section>
