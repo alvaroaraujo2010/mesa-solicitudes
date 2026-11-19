@@ -1,0 +1,6 @@
+export enum RequestStatus {
+  REGISTRADA = 'REGISTRADA',
+  EN_ATENCION = 'EN_ATENCION',
+  RESUELTA = 'RESUELTA',
+  CERRADA = 'CERRADA',
+}
