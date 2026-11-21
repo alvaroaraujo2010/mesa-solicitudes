@@ -13,6 +13,7 @@ import {
 } from 'rxjs';
 import { RequestsApiService } from '../../../core/services/requests-api.service';
 import { IdentityService } from '../../../core/services/identity.service';
+import Swal from 'sweetalert2';
 import {
   ACTION_LABELS,
   PaginatedRequests,
@@ -162,11 +163,23 @@ export class RequestListComponent implements OnInit {
     const title = this.newTitle.trim();
     const description = this.newDescription.trim();
     if (!title || !description) {
-      this.actionError.set('Título y descripción son obligatorios.');
+      void Swal.fire({
+        icon: 'warning',
+        title: 'Datos incompletos',
+        text: 'Título y descripción son obligatorios.',
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#0f6b5c',
+      });
       return;
     }
     if (!this.isFilial()) {
-      this.actionError.set('Solo una filial puede registrar solicitudes.');
+      void Swal.fire({
+        icon: 'error',
+        title: 'Acción no permitida',
+        text: 'Solo una filial puede registrar solicitudes.',
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#0f6b5c',
+      });
       return;
     }
 
@@ -177,17 +190,27 @@ export class RequestListComponent implements OnInit {
         this.acting.set(false);
         this.newTitle = '';
         this.newDescription = '';
-        this.successMessage.set(
-          `Solicitud registrada (${created.id.slice(0, 8)}…) en estado Registrada.`,
-        );
         this.page = 1;
         this.reload$.next();
+        void Swal.fire({
+          icon: 'success',
+          title: 'Solicitud registrada',
+          text: `Se creó con ID ${created.id.slice(0, 8)}… en estado Registrada.`,
+          confirmButtonText: 'Aceptar',
+          confirmButtonColor: '#0f6b5c',
+        });
       },
       error: (err) => {
         this.acting.set(false);
-        this.actionError.set(
-          err?.error?.message ?? 'No fue posible registrar la solicitud.',
-        );
+        const message =
+          err?.error?.message ?? 'No fue posible registrar la solicitud.';
+        void Swal.fire({
+          icon: 'error',
+          title: 'No se pudo registrar',
+          text: message,
+          confirmButtonText: 'Entendido',
+          confirmButtonColor: '#0f6b5c',
+        });
       },
     });
   }
@@ -198,16 +221,26 @@ export class RequestListComponent implements OnInit {
     this.api.transition(item.id, action).subscribe({
       next: (updated) => {
         this.acting.set(false);
-        this.successMessage.set(
-          `Solicitud actualizada a «${STATUS_LABELS[updated.status]}» (${ACTION_LABELS[action]}).`,
-        );
         this.reload$.next();
+        void Swal.fire({
+          icon: 'success',
+          title: 'Estado actualizado',
+          text: `Acción «${ACTION_LABELS[action]}»: la solicitud quedó en «${STATUS_LABELS[updated.status]}».`,
+          confirmButtonText: 'Aceptar',
+          confirmButtonColor: '#0f6b5c',
+        });
       },
       error: (err) => {
         this.acting.set(false);
-        this.actionError.set(
-          err?.error?.message ?? 'No fue posible ejecutar la transición.',
-        );
+        const message =
+          err?.error?.message ?? 'No fue posible ejecutar la transición.';
+        void Swal.fire({
+          icon: 'error',
+          title: 'No se pudo cambiar el estado',
+          text: message,
+          confirmButtonText: 'Entendido',
+          confirmButtonColor: '#0f6b5c',
+        });
       },
     });
   }

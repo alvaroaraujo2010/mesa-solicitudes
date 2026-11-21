@@ -1,16 +1,27 @@
 # Mesa de solicitudes
 
-Aplicación multi-tenant para que las filiales consulten y den seguimiento a sus solicitudes de servicio compartido.
+Aplicación multi-tenant para que las filiales consulten, registren y den seguimiento a sus solicitudes de servicio compartido, respetando el proceso acordado.
 
 ## Estructura
 
 ```text
 apps/api               Backend NestJS (Clean Architecture)
+apps/api/scripts       Scripts de base de datos y seed
 apps/web               Frontend Angular 20
-infra                  AWS CDK
+infra                  AWS CDK (DynamoDB + API Fargate + web S3/CloudFront)
 docker-compose.yml     Perfiles memory | mysql | dynamodb
-scripts/               Utilidades locales (MySQL)
+.github/workflows      CI (lint, tests, build, cdk synth)
+scripts/               Utilidades locales (MySQL portable, docs)
+docs/                  Bitácora de cambios y sustentación
 ```
+
+### Scripts de base de datos (`apps/api/scripts/`)
+
+| Archivo | Base | Uso |
+|---------|------|-----|
+| `init-mysql.sql` | MySQL | Crea la BD, tabla `requests` e índices |
+| `ensure-dynamodb-table.ts` | DynamoDB Local | Crea la tabla y GSI (`npm run dynamodb:ensure`) |
+| `seed.ts` | Cualquier adapter | Carga de volumen (también vía `POST /seed`) |
 
 ## Requisitos
 
@@ -54,8 +65,6 @@ MYSQL_DATABASE=mesa_solicitudes
 
 ### Opción A — MySQL portable (puerto 3307)
 
-Si ya inicializaste el portable una vez:
-
 ```powershell
 .\scripts\start-mysql-portable.ps1
 ```
@@ -64,23 +73,11 @@ Credenciales: `mesa` / `mesa_secret`, base `mesa_solicitudes`, puerto `3307`.
 
 ### Opción B — MySQL Server 8.0 de Windows (puerto 3306)
 
-Usuario local típico: `administrador` en `127.0.0.1:3306`.
-
 ```powershell
-# Inicializa esquema (ajusta password si aplica)
 & "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -u administrador -p < apps/api/scripts/init-mysql.sql
 ```
 
-En `apps/api/.env`:
-
-```env
-PERSISTENCE_ADAPTER=mysql
-MYSQL_HOST=127.0.0.1
-MYSQL_PORT=3306
-MYSQL_USER=administrador
-MYSQL_PASSWORD=tu_password
-MYSQL_DATABASE=mesa_solicitudes
-```
+En `apps/api/.env` usa `MYSQL_PORT=3306` y tus credenciales.
 
 ### API + Web
 
@@ -96,8 +93,8 @@ npm install
 npm start
 ```
 
-- API: http://localhost:3000  
-- Web: http://localhost:4200  
+- API: http://localhost:3000
+- Web: http://localhost:4200
 
 Identidad simulada: el selector de sesión envía `X-Tenant-Id`, `X-User-Id` y `X-User-Role`.
 
@@ -112,13 +109,8 @@ Usa la sesión **Ana Pérez · Cementos** en la UI.
 ## Docker Compose (perfiles)
 
 ```bash
-# MySQL + API + Web
 PERSISTENCE_ADAPTER=mysql docker compose --profile mysql up --build
-
-# Memoria
 PERSISTENCE_ADAPTER=memory docker compose --profile memory up --build
-
-# DynamoDB Local
 PERSISTENCE_ADAPTER=dynamodb docker compose --profile dynamodb up --build
 ```
 
@@ -129,15 +121,20 @@ cd apps/api
 npm run dynamodb:ensure
 ```
 
-## Pruebas y calidad
+## Qué hace la UI
 
-```bash
-cd apps/api && npm run lint && npm test && npm run test:e2e && npm run build
-cd apps/web && npm run lint && npm run build
-cd infra && npm install && npm run synth
-```
+- **Consulta:** listado paginado, filtro por estado, búsqueda por ID/título, estados vacío/error/carga.
+- **Proceso completo:** no es solo consulta.
+  - Filial: registrar solicitud; si está `RESUELTA`, confirmar cierre o rechazar.
+  - Analista: atender y marcar resuelta.
+- **SweetAlert2:** diálogo al registrar y al cambiar de estado (éxito o error).
+- Misma filial ≠ mismas acciones: en `REGISTRADA` la filial ve “Sin acción para este rol” porque quien debe actuar es el analista.
 
-CI: `.github/workflows/ci.yml`.
+## Flujo de estados
+
+`REGISTRADA` → `EN_ATENCION` → `RESUELTA` → `CERRADA`
+
+Desde `RESUELTA`, la filial puede `rechazar` y vuelve a `EN_ATENCION`. `CERRADA` es inmutable. Solo la filial confirma el cierre.
 
 ## API relevante
 
@@ -150,17 +147,33 @@ CI: `.github/workflows/ci.yml`.
 | POST | `/requests/:id/transitions` | `atender` \| `resolver` \| `confirmar` \| `rechazar` |
 | POST | `/seed` | Carga de volumen |
 
-## Flujo de estados
+## Pruebas y calidad
 
-`REGISTRADA` → `EN_ATENCION` → `RESUELTA` → `CERRADA`
+```bash
+cd apps/api && npm run lint && npm test && npm run test:e2e && npm run build
+cd apps/web && npm run lint && npm run build
+cd infra && npm install && npm run synth
+```
 
-Desde `RESUELTA`, la filial puede `rechazar` y vuelve a `EN_ATENCION`. `CERRADA` es inmutable. Solo la filial confirma el cierre.
+CI local: `.github/workflows/ci.yml` (lint API/web, tests unitarios API, build, `cdk synth`).
+
+La explicación de infraestructura está en `docs/sustentacion/`.
+
+## Cambios recientes (bitácora)
+
+| Fecha | Cambio | Doc |
+|-------|--------|-----|
+| 2026-11-19 | Núcleo API/web/compose/CDK/CI | `docs/changes/2026-11-19-mesa-solicitudes-core.md` |
+| 2026-11-19 | UI de proceso (crear + transiciones) | `docs/changes/2026-11-19-ui-proceso-completo.md` |
+| 2026-11-20 | `rootDir` en tsconfig (TS 6) | `docs/changes/2026-11-20-tsconfig-rootdir.md` |
+| 2026-11-20 | SweetAlert en registro y cambios de estado | `docs/changes/2026-11-20-sweetalert-registro.md` |
+| 2026-11-20 | Barrido vs prueba técnica | `docs/changes/2026-11-20-barrido-prueba-tecnica.md` |
+| 2026-11-20 | Actualización de documentación | `docs/changes/2026-11-20-docs-infra-actualizacion.md` |
 
 ## Fuera de alcance
 
 - Proveedor de identidad real (OAuth/OIDC)
 - Notificaciones por correo
-- Panel dedicado de analista (transiciones disponibles por API)
 - Despliegue real a AWS (IaC validada con `cdk synth`)
 - Búsqueda full-text avanzada en DynamoDB
 

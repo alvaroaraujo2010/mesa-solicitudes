@@ -30,6 +30,8 @@ Pantalla Angular con listado paginado, filtro por estado y búsqueda por id/tít
 
 Máquina de estados en dominio (`RequestProcessPolicy`), invocada solo desde el caso de uso de transición. Roles: analista (`atender`, `resolver`); filial (`confirmar`, `rechazar`). Intentos inválidos → `422` con mensaje claro; la entidad no se persiste si falla la regla. Cubierto con pruebas unitarias por criterio.
 
+Aunque el alcance mínimo no exigía pantalla para el proceso, la UI Angular expone crear + botones de transición según rol/estado, con SweetAlert2 de confirmación, para demostrar el flujo completo en demo.
+
 *Descartado:* estados libres en el controlador — rompería la invariante del proceso.
 
 ## Problema 3 — Confidencialidad multi-tenant
@@ -41,6 +43,8 @@ Toda lectura/escritura exige `tenantId` del contexto (cabeceras simuladas). `fin
 ## Arquitectura y stack
 
 - **Clean Architecture + SOLID** en NestJS: dominio sin dependencias de Nest; puertos/adapters para persistencia (`memory` \| `mysql` \| `dynamodb`).
-- **Angular 20** standalone para la consulta de la filial.
-- **CDK** modela DynamoDB, API Fargate y frontend S3/CloudFront; se valida con `cdk synth` sin cuenta.
+- **Angular 20** standalone: consulta + proceso (registro/transiciones) + feedback SweetAlert2.
+- **CDK** para IaC validada con `cdk synth` (sin desplegar). Detalle de infra solo en `docs/sustentacion/`.
 - Identidad simulada por cabeceras (sin IdP) para acotar alcance a los tres problemas de negocio.
+
+*Descartado para IaC:* SAM/Terraform — CDK mantiene TypeScript unificado con el repo.

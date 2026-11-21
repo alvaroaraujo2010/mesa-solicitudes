@@ -3,10 +3,6 @@
     <div>
       <p class="eyebrow">Centro de servicios compartidos</p>
       <h1>Mesa de solicitudes</h1>
-      <p class="lede">
-        Registre, atienda y cierre solicitudes respetando el proceso acordado. Cada sesión
-        actúa como filial o analista.
-      </p>
     </div>
 
     <label class="session">
@@ -30,7 +26,7 @@
   @if (isFilial()) {
     <section class="composer" aria-label="Registrar solicitud">
       <h2>Nueva solicitud</h2>
-      <p class="composer__hint">La solicitud nace en estado <strong>Registrada</strong>.</p>
+      <br>
       <div class="composer__grid">
         <label class="field">
           <span>Título</span>
@@ -41,7 +37,6 @@
           <textarea
             [(ngModel)]="newDescription"
             rows="3"
-            placeholder="Detalle del requerimiento"
           ></textarea>
         </label>
       </div>
