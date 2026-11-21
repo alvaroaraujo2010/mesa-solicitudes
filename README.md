@@ -157,8 +157,6 @@ cd infra && npm install && npm run synth
 
 CI local: `.github/workflows/ci.yml` (lint API/web, tests unitarios API, build, `cdk synth`).
 
-La explicación de infraestructura está en `docs/sustentacion/`.
-
 ## Cambios recientes (bitácora)
 
 | Fecha | Cambio | Doc |

@@ -22,3 +22,5 @@ temp/
 apps/web/.vscode/
 infra/cdk.context.json
 *.tsbuildinfo
+docs/sustentacion/
+scripts/generate-sustentacion-docs.py

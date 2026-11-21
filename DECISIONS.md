@@ -44,7 +44,7 @@ Toda lectura/escritura exige `tenantId` del contexto (cabeceras simuladas). `fin
 
 - **Clean Architecture + SOLID** en NestJS: dominio sin dependencias de Nest; puertos/adapters para persistencia (`memory` \| `mysql` \| `dynamodb`).
 - **Angular 20** standalone: consulta + proceso (registro/transiciones) + feedback SweetAlert2.
-- **CDK** para IaC validada con `cdk synth` (sin desplegar). Detalle de infra solo en `docs/sustentacion/`.
+- **CDK** para IaC validada con `cdk synth` (sin desplegar).
 - Identidad simulada por cabeceras (sin IdP) para acotar alcance a los tres problemas de negocio.
 
 *Descartado para IaC:* SAM/Terraform — CDK mantiene TypeScript unificado con el repo.
